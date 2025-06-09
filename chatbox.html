@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>智能聊天助手</title>
+  <style>
+    /* 原有所有样式完全保留 */
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    #chat-root {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 1000;
+    }
+
+    .chat-toggle-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      z-index: 1001;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .chat-toggle-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .draggable-header {
+      cursor: move;
+      user-select: none;
+    }
+
+    .chat-window {
+      width: 400px;
+      height: 500px;
+      background-color: white;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      display: flex;
+      overflow: hidden;
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 1000;
+      transition: all 0.3s ease;
+      will-change: transform; /* 优化拖动流畅度 */
+    }
+
+    .chat-window.maximized {
+      width: calc(100vw - 40px);
+      height: calc(100vh - 40px);
+      right: 20px;
+      bottom: 20px;
+    }
+
+    .chat-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      background-color: #3498db;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+    }
+
+    .chat-title {
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .chat-controls button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      margin-left: 12px;
+      padding: 4px;
+      border-radius: 4px;
+    }
+
+    .chat-controls button:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .sidebar {
+      width: 140px;
+      background-color: #2c3e50;
+      color: white;
+      padding: 16px 12px;
+      overflow-y: auto;
+      border-right: 1px solid #1a252f;
+      margin-top: 48px;
+    }
+
+    .new-chat-btn {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 14px;
+      width: 100%;
+      margin-bottom: 16px;
+      transition: background-color 0.2s;
+    }
+
+    .new-chat-btn:hover {
+      background-color: #2980b9;
+    }
+
+    .history-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      font-size: 14px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-item:hover, .history-item.active {
+      background-color: #3498db;
+    }
+
+    .history-item .time {
+      font-size: 12px;
+      color: #bdc3c7;
+      margin-top: 4px;
+    }
+
+    .chat-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      margin-top: 48px;
+    }
+
+    .welcome-input-container {
+      padding: 24px;
+      text-align: center;
+      color: #666;
+    }
+
+    .welcome-input-container h3 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+
+    .welcome-input-container p {
+      margin-bottom: 16px;
+    }
+
+    .welcome-input {
+      width: 80%;
+      padding: 12px 16px;
+      border: 1px solid #ddd;
+      border-radius: 24px;
+      font-size: 15px;
+      margin-bottom: 16px;
+    }
+
+    .welcome-submit {
+      padding: 10px 20px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 24px;
+      cursor: pointer;
+    }
+
+    .messages-container {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background-color: #f9f9f9;
+    }
+
+    .message {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message.user {
+      align-items: flex-end;
+    }
+
+    .message.bot {
+      align-items: flex-start;
+    }
+
+    .message-bubble {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 18px;
+      word-wrap: break-word;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      font-size: 15px;
+    }
+
+    .message.user .message-bubble {
+      background-color: #3498db;
+      color: white;
+      border-bottom-right-radius: 4px;
+    }
+
+    .message.bot .message-bubble {
+      background-color: #e9ecef;
+      color: black;
+      border-bottom-left-radius: 4px;
+    }
+
+    .message-time {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .input-area {
+      display: flex;
+      padding: 16px;
+      border-top: 1px solid #eee;
+      background-color: white;
+    }
+
+    .message-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #ddd;
+      border-radius: 24px;
+      outline: none;
+      margin-right: 12px;
+      font-size: 15px;
+      transition: border-color 0.2s;
+    }
+
+    .message-input:focus {
+      border-color: #3498db;
+    }
+
+    .send-button {
+      padding: 12px 20px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      border-radius: 24px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.2s;
+    }
+
+    .send-button:hover {
+      background-color: #2980b9;
+    }
+
+    /* 新增的调整大小手柄样式 */
+    .resize-handle {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: #3498db;
+      z-index: 1001;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .chat-window:hover .resize-handle {
+      opacity: 1;
+    }
+    .resize-handle-bottom-right {
+      right: 0;
+      bottom: 0;
+      cursor: nwse-resize;
+    }
+  </style>
+</head>
+<body>
+  <button id="toggle-chat" class="chat-toggle-button">💬</button>
+  <div id="chat-root"></div>
+
+  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useRef, useEffect } = React;
+
+    const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+
+    const loadChatHistory = () => {
+      const history = localStorage.getItem('chatHistory');
+      return history ? JSON.parse(history) : [];
+    };
+
+    const saveChatHistory = (history) => {
+      localStorage.setItem('chatHistory', JSON.stringify(history));
+    };
+
+    const formatTime = (timestamp) => {
+      const now = Date.now();
+      const diff = now - timestamp;
+      const date = new Date(timestamp);
+      
+      if (diff < 60000) return '刚刚';
+      if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+      if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
+      return date.toLocaleDateString();
+    };
+
+    const FloatingChatApp = () => {
+      const [isOpen, setIsOpen] = useState(false);
+      const [isMaximized, setIsMaximized] = useState(false);
+      const [position, setPosition] = useState({ x: window.innerWidth - 420, y: window.innerHeight - 520 });
+      const [size, setSize] = useState({ width: 400, height: 500 });
+      const [chatHistory, setChatHistory] = useState(loadChatHistory());
+      const [activeChatId, setActiveChatId] = useState(null);
+      const [activeChat, setActiveChat] = useState(null);
+      const [isDragging, setIsDragging] = useState(false);
+      const [isResizing, setIsResizing] = useState(false);
+      const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+      const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
+      const chatWindowRef = useRef(null);
+      const [welcomeInput, setWelcomeInput] = useState('');
+
+      const startNewChat = () => {
+        const newChatId = generateId();
+        const newChat = {
+          id: newChatId,
+          title: '新对话',
+          messages: [],
+          timestamp: Date.now(),
+          isNew: true
+        };
+        setActiveChatId(newChatId);
+        setActiveChat(newChat);
+      };
+
+      const loadChat = (chatId) => {
+        const chatFromHistory = chatHistory.find(chat => chat.id === chatId);
+        if (chatFromHistory) {
+          setActiveChatId(chatId);
+          setActiveChat({
+            ...chatFromHistory,
+            isNew: false
+          });
+        }
+      };
+
+      const saveCurrentChat = () => {
+        if (!activeChat || activeChat.messages.filter(msg => msg.sender === 'user').length === 0) return;
+        
+        const userMessages = activeChat.messages.filter(msg => msg.sender === 'user');
+        const firstUserMessage = userMessages[0].text;
+        const chatTitle = firstUserMessage.length > 20 
+          ? firstUserMessage.substring(0, 20) + '...' 
+          : firstUserMessage;
+        
+        const updatedChat = {
+          ...activeChat,
+          title: chatTitle,
+          timestamp: Date.now(),
+          isNew: false
+        };
+        
+        setChatHistory(prev => {
+          const existingIndex = prev.findIndex(chat => chat.id === updatedChat.id);
+          const newHistory = existingIndex >= 0 
+            ? [...prev.slice(0, existingIndex), updatedChat, ...prev.slice(existingIndex + 1)]
+            : [updatedChat, ...prev];
+          
+          saveChatHistory(newHistory);
+          return newHistory;
+        });
+      };
+
+      const handleDrag = useRef((e) => {
+        if (isDragging) {
+          const newX = e.clientX - dragStart.x;
+          const newY = e.clientY - dragStart.y;
+          
+          const boundedX = Math.max(0, Math.min(window.innerWidth - size.width, newX));
+          const boundedY = Math.max(0, Math.min(window.innerHeight - size.height, newY));
+          
+          setPosition({
+            x: boundedX,
+            y: boundedY
+          });
+        }
+        
+        if (isResizing) {
+          const deltaX = e.clientX - resizeStart.x;
+          const deltaY = e.clientY - resizeStart.y;
+          
+          setSize({
+            width: Math.max(300, Math.min(800, resizeStart.width + deltaX)),
+            height: Math.max(300, Math.min(600, resizeStart.height + deltaY))
+          });
+        }
+      }).current;
+
+      const handleResizeStart = (e) => {
+        setIsResizing(true);
+        setResizeStart({
+          x: e.clientX,
+          y: e.clientY,
+          width: size.width,
+          height: size.height
+        });
+        e.stopPropagation();
+        e.preventDefault();
+      };
+
+      const sendMessage = (text) => {
+        if (!text.trim()) return;
+        
+        const newUserMessage = {
+          id: generateId(),
+          text: text,
+          sender: 'user',
+          timestamp: Date.now()
+        };
+        
+        const updatedMessages = [...(activeChat?.messages || []), newUserMessage];
+        const updatedChat = {
+          ...(activeChat || { id: generateId(), title: '新对话', isNew: false }),
+          messages: updatedMessages,
+          isNew: false
+        };
+        
+        setActiveChat(updatedChat);
+        if (!activeChatId) setActiveChatId(updatedChat.id);
+        
+        if (updatedMessages.filter(m => m.sender === 'user').length === 1) {
+          const firstUserMessage = updatedMessages.find(m => m.sender === 'user').text;
+          const chatTitle = firstUserMessage.length > 20 
+            ? firstUserMessage.substring(0, 20) + '...' 
+            : firstUserMessage;
+          
+          const chatToSave = {
+            ...updatedChat,
+            title: chatTitle,
+            timestamp: Date.now()
+          };
+          
+          setChatHistory(prev => {
+            const newHistory = [chatToSave, ...prev];
+            saveChatHistory(newHistory);
+            return newHistory;
+          });
+        }
+        
+        setTimeout(() => {
+          const botResponses = [
+            '我明白了，请继续。',
+            '这是一个有趣的观点。',
+            '你能详细说明一下吗？',
+            '我会记住这个信息。',
+            '谢谢分享！',
+            '我还在学习中，请耐心等待我的进步。',
+            '这个问题很有意思，让我想想...',
+            '根据我的理解，你是在问...',
+            '让我查一下相关资料...',
+            '这是一个常见问题，解决方案是...'
+          ];
+          const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
+          
+          const newBotMessage = {
+            id: generateId(),
+            text: randomResponse,
+            sender: 'bot',
+            timestamp: Date.now()
+          };
+          
+          setActiveChat(prev => ({
+            ...prev,
+            messages: [...prev.messages, newBotMessage]
+          }));
+        }, 800 + Math.random() * 1000);
+      };
+
+      const handleWelcomeSubmit = () => {
+        if (welcomeInput.trim()) {
+          sendMessage(welcomeInput);
+          setWelcomeInput('');
+        }
+      };
+
+      const handleKeyPress = (e) => {
+        if (e.key === 'Enter') {
+          if (activeChat?.isNew && activeChat.messages.length === 0) {
+            handleWelcomeSubmit();
+          } else {
+            const input = document.querySelector('.message-input');
+            sendMessage(input.value);
+            input.value = '';
+          }
+        }
+      };
+
+      useEffect(() => {
+        document.addEventListener('mousemove', handleDrag);
+        document.addEventListener('mouseup', () => {
+          setIsDragging(false);
+          setIsResizing(false);
+        });
+        
+        const toggleButton = document.getElementById('toggle-chat');
+        if (toggleButton) {
+          toggleButton.addEventListener('click', () => {
+            setIsOpen(!isOpen);
+            if (!isOpen && !activeChatId) {
+              startNewChat();
+            }
+          });
+        }
+        
+        return () => {
+          document.removeEventListener('mousemove', handleDrag);
+          document.removeEventListener('mouseup', () => {
+            setIsDragging(false);
+            setIsResizing(false);
+          });
+          if (toggleButton) {
+            toggleButton.removeEventListener('click', () => setIsOpen(!isOpen));
+          }
+        };
+      }, [isOpen, activeChatId]);
+
+      useEffect(() => {
+        const handleResize = () => {
+          if (!isMaximized) {
+            setPosition({
+              x: Math.min(position.x, window.innerWidth - size.width),
+              y: Math.min(position.y, window.innerHeight - size.height)
+            });
+          }
+        };
+        
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+      }, [isMaximized, position, size]);
+
+      if (!isOpen) return null;
+
+      return (
+        <div 
+          ref={chatWindowRef}
+          className={`chat-window ${isMaximized ? 'maximized' : ''}`}
+          style={{
+            left: isMaximized ? '20px' : `${position.x}px`,
+            top: isMaximized ? '20px' : `${position.y}px`,
+            width: isMaximized ? 'calc(100vw - 40px)' : `${size.width}px`,
+            height: isMaximized ? 'calc(100vh - 40px)' : `${size.height}px`,
+          }}
+        >
+          <div 
+            className="draggable-header chat-header"
+            onMouseDown={(e) => {
+              if (e.target.className.includes('draggable-header')) {
+                setIsDragging(true);
+                setDragStart({
+                  x: e.clientX - position.x,
+                  y: e.clientY - position.y
+                });
+                e.preventDefault();
+              }
+            }}
+          >
+            <div className="chat-title">智能聊天助手</div>
+            <div className="chat-controls">
+              <button onClick={() => setIsMaximized(!isMaximized)}>
+                {isMaximized ? '🗗' : '🗖'}
+              </button>
+              <button onClick={() => setIsOpen(false)}>×</button>
+            </div>
+          </div>
+          
+          {!isMaximized && (
+            <div 
+              className="resize-handle resize-handle-bottom-right"
+              onMouseDown={handleResizeStart}
+            />
+          )}
+          
+          <div className="sidebar">
+            <button 
+              className="new-chat-btn"
+              onClick={() => {
+                saveCurrentChat();
+                startNewChat();
+              }}
+            >
+              + 新对话
+            </button>
+            
+            {chatHistory.map(chat => (
+              <div
+                key={chat.id}
+                className={`history-item ${activeChatId === chat.id ? 'active' : ''}`}
+                onClick={() => {
+                  saveCurrentChat();
+                  loadChat(chat.id);
+                }}
+              >
+                {chat.title}
+                <div className="time">{formatTime(chat.timestamp)}</div>
+              </div>
+            ))}
+          </div>
+          
+          <div className="chat-content">
+            {activeChat?.isNew && activeChat.messages.length === 0 ? (
+              <div className="welcome-input-container">
+                <h3>我可以帮助您解答各种问题</h3>
+                <p>请问您有什么想了解的？</p>
+                <input
+                  type="text"
+                  className="welcome-input"
+                  placeholder="请输入您想了解的内容..."
+                  value={welcomeInput}
+                  onChange={(e) => setWelcomeInput(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  autoFocus
+                />
+                <button 
+                  className="welcome-submit"
+                  onClick={handleWelcomeSubmit}
+                >
+                  发送
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="messages-container">
+                  {activeChat?.messages.map(message => (
+                    <div 
+                      key={message.id} 
+                      className={`message ${message.sender}`}
+                    >
+                      <div className="message-bubble">{message.text}</div>
+                      <div className="message-time">
+                        {message.sender === 'user' ? '你' : '助手'} · {formatTime(message.timestamp)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="input-area">
+                  <input
+                    type="text"
+                    className="message-input"
+                    placeholder="输入消息..."
+                    onKeyPress={handleKeyPress}
+                  />
+                  <button 
+                    className="send-button"
+                    onClick={() => {
+                      const input = document.querySelector('.message-input');
+                      sendMessage(input.value);
+                      input.value = '';
+                    }}
+                  >
+                    发送
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.render(<FloatingChatApp />, document.getElementById('chat-root'));
+  </script>
+</body>
+</html>
