@@ -1,264 +1,569 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>浮动聊天窗口</title>
-  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
-  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
-  <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+  <title>AI Chat Assistant</title>
   <style>
-    * {
-      box-sizing: border-box;
+    /* 保持原有样式不变 */
+    body {
+      font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
       margin: 0;
       padding: 0;
-      font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
     }
-    
-    body {
-      background-color: #f5f5f5;
-    }
-    
-    .floating-chat {
+
+    #chat-root {
       position: fixed;
       bottom: 20px;
       right: 20px;
-      width: 400px;
-      height: 600px;
-      background-color: white;
-      border-radius: 12px;
-      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
       z-index: 1000;
     }
-    
-    .chat-header {
-      padding: 15px;
-      background-color: #1890ff;
+
+    .chat-toggle-button {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background-color: #3498db;
       color: white;
-      font-weight: bold;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      z-index: 1001;
       display: flex;
-      justify-content: space-between;
+      justify-content: center;
       align-items: center;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
-    
+
+    .chat-toggle-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    .draggable-header {
+      cursor: move;
+      user-select: none;
+    }
+
+    .chat-window {
+      width: 450px;
+      height: 500px;
+      background-color: white;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+      display: flex;
+      overflow: hidden;
+      position: fixed;
+      right: 20px;
+      bottom: 20px;
+      z-index: 1000;
+      resize: both;
+      min-width: 300px;
+      min-height: 400px;
+    }
+
+    .chat-window.maximized {
+      width: calc(100vw - 40px);
+      height: calc(100vh - 40px);
+      right: 20px;
+      bottom: 20px;
+      resize: none;
+    }
+
+    .chat-header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      background-color: #3498db;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 100;
+    }
+
     .chat-title {
-      font-size: 16px;
+      font-weight: 600;
+      font-size: 14px;
     }
-    
-    .close-btn {
+
+    .chat-controls button {
       background: none;
       border: none;
       color: white;
-      font-size: 20px;
-      cursor: pointer;
-    }
-    
-    .chat-tabs {
-      display: flex;
-      border-bottom: 1px solid #eee;
-      padding: 0 15px;
-    }
-    
-    .chat-tab {
-      padding: 10px 15px;
-      cursor: pointer;
       font-size: 14px;
-      position: relative;
+      cursor: pointer;
+      margin-left: 12px;
+      padding: 4px;
     }
-    
-    .chat-tab.active {
-      color: #1890ff;
+
+    .chat-controls button:hover {
+      background-color: rgba(255, 255, 255, 0.2);
     }
-    
-    .chat-tab.active::after {
-      content: '';
-      position: absolute;
-      bottom: -1px;
-      left: 0;
-      width: 100%;
-      height: 2px;
-      background-color: #1890ff;
-    }
-    
-    .chat-tab.new-chat {
-      color: #1890ff;
-      font-weight: bold;
-    }
-    
-    .messages-container {
-      flex: 1;
-      padding: 15px;
-      overflow-y: auto;
-      background-color: #fafafa;
-    }
-    
-    .message {
-      margin-bottom: 15px;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .message.user {
-      align-items: flex-end;
-    }
-    
-    .message.assistant {
-      align-items: flex-start;
-    }
-    
-    .message-bubble {
-      max-width: 80%;
-      padding: 10px 15px;
-      border-radius: 18px;
-      margin-bottom: 5px;
-      word-wrap: break-word;
-    }
-    
-    .message.user .message-bubble {
-      background-color: #1890ff;
+
+    .sidebar {
+      width: 140px;
+      background-color: #2c3e50;
       color: white;
-      border-top-right-radius: 4px;
-    }
-    
-    .message.assistant .message-bubble {
-      background-color: #e6e6e6;
-      color: #333;
-      border-top-left-radius: 4px;
-    }
-    
-    .message-time {
+      padding: 16px 12px;
+      overflow-y: auto;
+      border-right: 1px solid #1a252f;
+      margin-top: 48px;
       font-size: 12px;
-      color: #999;
     }
-    
-    .input-area {
-      padding: 15px;
-      border-top: 1px solid #eee;
-      display: flex;
-      align-items: center;
-      background-color: white;
+
+    .sidebar::-webkit-scrollbar {
+      width: 6px;
     }
-    
-    .message-input {
-      flex: 1;
-      padding: 10px 15px;
-      border: 1px solid #ddd;
-      border-radius: 20px;
-      outline: none;
-      resize: none;
-      max-height: 100px;
+    .sidebar::-webkit-scrollbar-track {
+      background: #1a252f;
     }
-    
-    .send-btn {
-      margin-left: 10px;
-      padding: 10px 15px;
-      background-color: #1890ff;
+    .sidebar::-webkit-scrollbar-thumb {
+      background-color: #3498db;
+      border-radius: 3px;
+    }
+
+    .new-chat-btn {
+      background-color: #3498db;
       color: white;
       border: none;
-      border-radius: 20px;
+      padding: 8px 12px;
       cursor: pointer;
+      font-size: 12px;
+      width: 100%;
+      margin-bottom: 16px;
+      transition: background-color 0.2s;
     }
-    
-    .send-btn:hover {
-      background-color: #40a9ff;
+
+    .new-chat-btn:hover {
+      background-color: #2980b9;
     }
-    
-    .chat-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 10px 0;
-    }
-    
-    .chat-item {
-      padding: 12px 15px;
+
+    .history-item {
+      padding: 8px;
+      margin-bottom: 8px;
       cursor: pointer;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    
-    .chat-item:hover {
-      background-color: #f5f5f5;
-    }
-    
-    .chat-item.active {
-      background-color: #e6f7ff;
-    }
-    
-    .chat-item-title {
-      font-size: 14px;
+      transition: background-color 0.2s;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .history-item-content {
       flex: 1;
+      overflow: hidden;
     }
-    
-    .chat-item-time {
-      font-size: 12px;
-      color: #999;
-      margin-left: 10px;
+
+    .history-item:hover, .history-item.active {
+      background-color: #3498db;
     }
-    
+
+    .history-item .time {
+      font-size: 10px;
+      color: #bdc3c7;
+      margin-top: 4px;
+    }
+
     .delete-chat-btn {
-      margin-left: 10px;
-      color: #ff4d4f;
       background: none;
       border: none;
+      color: #e74c3c;
       cursor: pointer;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .history-item:hover .delete-chat-btn {
+      opacity: 1;
+    }
+
+    .delete-chat-btn:hover {
+      color: #c0392b;
+    }
+
+    .chat-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      margin-top: 48px;
+    }
+
+    .new-chat-prompt {
+      padding: 24px;
+      text-align: center;
+      color: #666;
+    }
+
+    .new-chat-prompt h3 {
+      margin-top: 0;
+      color: #2c3e50;
+      font-size: 14px;
+    }
+
+    .new-chat-prompt p {
+      margin-bottom: 16px;
+      font-size: 12px;
+    }
+
+    .messages-container {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background-color: #f9f9f9;
+    }
+
+    .message {
+      margin-bottom: 16px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .message.user {
+      align-items: flex-end;
+    }
+
+    .message.bot {
+      align-items: flex-start;
+    }
+
+    .message-bubble {
+      max-width: 80%;
+      padding: 10px 14px;
+      word-wrap: break-word;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+      font-size: 13px;
+    }
+
+    .message.user .message-bubble {
+      background-color: #3498db;
+      color: white;
+    }
+
+    .message.bot .message-bubble {
+      background-color: #e9ecef;
+      color: black;
+    }
+
+    .message-time {
+      font-size: 10px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .input-area {
+      display: flex;
+      padding: 16px;
+      border-top: 1px solid #eee;
+      background-color: white;
+    }
+
+    .message-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      outline: none;
+      margin-right: 12px;
+      font-size: 13px;
+      transition: border-color 0.2s;
+    }
+
+    .message-input:focus {
+      border-color: #3498db;
+    }
+
+    .send-button {
+      padding: 10px 16px;
+      background-color: #3498db;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: background-color 0.2s;
+    }
+
+    .send-button:hover {
+      background-color: #2980b9;
+    }
+
+    .resize-handle {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      width: 12px;
+      height: 12px;
+      cursor: se-resize;
+      z-index: 100;
+    }
+
+    .trash-icon {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
     }
   </style>
 </head>
 <body>
+  <button id="toggle-chat" class="chat-toggle-button">💬</button>
   <div id="chat-root"></div>
 
+  <script src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <symbol id="trash-icon" viewBox="0 0 24 24">
+      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+    </symbol>
+  </svg>
+
   <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
-    
-    const generateId = () => Math.random().toString(36).substr(2, 9);
-    
-    const formatTime = (timestamp) => {
-      const date = new Date(timestamp);
-      const hours = date.getHours().toString().padStart(2, '0');
-      const minutes = date.getMinutes().toString().padStart(2, '0');
-      return `${hours}:${minutes}`;
+    const { useState, useRef, useEffect, useCallback } = React;
+
+    const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+
+    const loadChatHistory = () => {
+      try {
+        const history = localStorage.getItem('chatHistory');
+        return history ? JSON.parse(history) : [];
+      } catch (e) {
+        console.error('Error loading chat history:', e);
+        return [];
+      }
     };
-    
-    const FloatingChatApp = () => {
-      const [activeTab, setActiveTab] = useState('chat');
-      const [activeChatId, setActiveChatId] = useState(null);
-      const [chats, setChats] = useState([]);
-      const [messageInput, setMessageInput] = useState('');
-      const [isMinimized, setIsMinimized] = useState(false);
-      const messagesEndRef = useRef(null);
+
+    const saveChatHistory = (history) => {
+      try {
+        localStorage.setItem('chatHistory', JSON.stringify(history));
+      } catch (e) {
+        console.error('Error saving chat history:', e);
+      }
+    };
+
+    const loadChatState = () => {
+      try {
+        const state = localStorage.getItem('chatState');
+        if (state) {
+          const parsedState = JSON.parse(state);
+          // 确保返回的对象包含完整的状态
+          return {
+            position: parsedState.position || { x: window.innerWidth - 470, y: window.innerHeight - 520 },
+            size: parsedState.size || { width: 450, height: 500 }
+          };
+        }
+        return {
+          position: { x: window.innerWidth - 470, y: window.innerHeight - 520 },
+          size: { width: 450, height: 500 }
+        };
+      } catch (e) {
+        console.error('Error loading chat state:', e);
+        return {
+          position: { x: window.innerWidth - 470, y: window.innerHeight - 520 },
+          size: { width: 450, height: 500 }
+        };
+      }
+    };
+
+    const saveChatState = (state) => {
+      try {
+        localStorage.setItem('chatState', JSON.stringify(state));
+      } catch (e) {
+        console.error('Error saving chat state:', e);
+      }
+    };
+
+    const formatTime = (timestamp) => {
+      const now = Date.now();
+      const diff = now - timestamp;
+      const date = new Date(timestamp);
       
-      const activeChat = chats.find(chat => chat.id === activeChatId) || null;
+      if (diff < 60000) return 'Just now';
+      if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+      if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
+      return date.toLocaleDateString();
+    };
+
+    const fetchAIResponse = async (message) => {
+      await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1000));
       
-      const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+      const responses = [
+        'I understand what you\'re saying. Can you elaborate more?',
+        'That\'s an interesting perspective. Tell me more about it.',
+        'I see. What else would you like to discuss?',
+        'Thanks for sharing that information with me.',
+        'I\'ve noted your input. Is there anything specific you\'d like to know?',
+        'That makes sense. How can I assist you further?',
+        'Interesting point. Have you considered other aspects of this?',
+        'I appreciate your message. What would you like to explore next?'
+      ];
+      
+      return {
+        success: true,
+        data: {
+          response: responses[Math.floor(Math.random() * responses.length)],
+          timestamp: Date.now()
+        }
       };
-      
-      useEffect(() => {
-        scrollToBottom();
-      }, [activeChat?.messages]);
-      
-      const createNewChat = () => {
-        const newChat = {
+    };
+
+    const FloatingChatApp = () => {
+      const [isOpen, setIsOpen] = useState(false);
+      const [isMaximized, setIsMaximized] = useState(false);
+      const savedState = loadChatState();
+      const [position, setPosition] = useState(savedState.position);
+      const [size, setSize] = useState(savedState.size);
+      const [chatHistory, setChatHistory] = useState(loadChatHistory());
+      const [activeChatId, setActiveChatId] = useState(null);
+      const [activeChat, setActiveChat] = useState(null);
+      const [isDragging, setIsDragging] = useState(false);
+      const [isResizing, setIsResizing] = useState(false);
+      const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+      const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
+      const [isNewChatPrompt, setIsNewChatPrompt] = useState(false);
+      const [isLoading, setIsLoading] = useState(false);
+      const chatWindowRef = useRef(null);
+      const messagesEndRef = useRef(null);
+      const messageInputRef = useRef(null);
+      const messagesContainerRef = useRef(null);
+
+      const scrollToBottom = useCallback(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
+      }, []);
+
+      const startNewChatPrompt = useCallback(() => {
+        setIsNewChatPrompt(true);
+        setActiveChatId(null);
+        setActiveChat(null);
+        setTimeout(() => {
+          if (messageInputRef.current) {
+            messageInputRef.current.focus();
+          }
+        }, 0);
+      }, []);
+
+      const createNewChat = useCallback(async (firstMessage) => {
+        if (!firstMessage.trim()) return;
+        
+        const newChatId = generateId();
+        const chatTitle = firstMessage.length > 20 
+          ? firstMessage.substring(0, 20) + '...' 
+          : firstMessage;
+        
+        const newUserMessage = {
           id: generateId(),
-          title: '新对话',
-          messages: [],
-          isNew: true,
+          text: firstMessage,
+          sender: 'user',
           timestamp: Date.now()
         };
-        setChats([newChat, ...chats]);
-        setActiveChatId(newChat.id);
-        setActiveTab('chat');
-      };
-      
-      const sendMessage = (text) => {
+        
+        const newChat = {
+          id: newChatId,
+          title: chatTitle,
+          messages: [newUserMessage],
+          timestamp: Date.now(),
+          isNew: false
+        };
+        
+        setActiveChatId(newChatId);
+        setActiveChat(newChat);
+        setIsNewChatPrompt(false);
+        
+        setChatHistory(prev => {
+          const newHistory = [newChat, ...prev];
+          saveChatHistory(newHistory);
+          return newHistory;
+        });
+
+        setIsLoading(true);
+        try {
+          const response = await fetchAIResponse(firstMessage);
+          if (response.success) {
+            const newBotMessage = {
+              id: generateId(),
+              text: response.data.response,
+              sender: 'bot',
+              timestamp: response.data.timestamp
+            };
+            
+            setActiveChat(prev => ({
+              ...prev,
+              messages: [...prev.messages, newBotMessage]
+            }));
+            
+            setChatHistory(prev => {
+              const updatedHistory = [...prev];
+              const chatIndex = updatedHistory.findIndex(chat => chat.id === newChatId);
+              if (chatIndex !== -1) {
+                updatedHistory[chatIndex] = {
+                  ...updatedHistory[chatIndex],
+                  messages: [...updatedHistory[chatIndex].messages, newBotMessage]
+                };
+                saveChatHistory(updatedHistory);
+              }
+              return updatedHistory;
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching AI response:', error);
+        } finally {
+          setIsLoading(false);
+          setTimeout(scrollToBottom, 100);
+        }
+      }, [scrollToBottom]);
+
+      const loadChat = useCallback((chatId) => {
+        const chatFromHistory = chatHistory.find(chat => chat.id === chatId);
+        if (chatFromHistory) {
+          setActiveChatId(chatId);
+          setActiveChat({
+            ...chatFromHistory,
+            isNew: false
+          });
+          setIsNewChatPrompt(false);
+          setTimeout(scrollToBottom, 100);
+        }
+      }, [chatHistory, scrollToBottom]);
+
+      const deleteChat = useCallback((chatId, e) => {
+        e.stopPropagation();
+        
+        if (activeChatId === chatId) {
+          setActiveChatId(null);
+          setActiveChat(null);
+        }
+        
+        setChatHistory(prev => {
+          const newHistory = prev.filter(chat => chat.id !== chatId);
+          saveChatHistory(newHistory);
+          return newHistory;
+        });
+      }, [activeChatId]);
+
+      const sendMessage = useCallback(async (text) => {
         if (!text.trim()) return;
+        
+        if (isNewChatPrompt) {
+          await createNewChat(text);
+          return;
+        }
         
         const newUserMessage = {
           id: generateId(),
@@ -269,160 +574,338 @@
         
         const updatedMessages = [...(activeChat?.messages || []), newUserMessage];
         const updatedChat = {
-          ...(activeChat || { id: generateId(), title: '新对话', isNew: false }),
+          ...(activeChat || { id: generateId(), title: 'New Chat', isNew: false }),
           messages: updatedMessages,
-          isNew: false,
-          timestamp: Date.now()
+          isNew: false
         };
         
-        // 更新或添加聊天
-        if (activeChat) {
-          setChats(chats.map(chat => 
-            chat.id === activeChat.id ? updatedChat : chat
-          ));
-        } else {
-          setChats([updatedChat, ...chats]);
-          setActiveChatId(updatedChat.id);
+        setActiveChat(updatedChat);
+        if (!activeChatId) setActiveChatId(updatedChat.id);
+        
+        setChatHistory(prev => {
+          const existingIndex = prev.findIndex(chat => chat.id === updatedChat.id);
+          const newHistory = existingIndex >= 0 
+            ? [...prev.slice(0, existingIndex), updatedChat, ...prev.slice(existingIndex + 1)]
+            : [updatedChat, ...prev];
+          
+          saveChatHistory(newHistory);
+          return newHistory;
+        });
+        
+        setIsLoading(true);
+        try {
+          const response = await fetchAIResponse(text);
+          if (response.success) {
+            const newBotMessage = {
+              id: generateId(),
+              text: response.data.response,
+              sender: 'bot',
+              timestamp: response.data.timestamp
+            };
+            
+            setActiveChat(prev => ({
+              ...prev,
+              messages: [...prev.messages, newBotMessage]
+            }));
+            
+            setChatHistory(prev => {
+              const updatedHistory = [...prev];
+              const chatIndex = updatedHistory.findIndex(chat => chat.id === updatedChat.id);
+              if (chatIndex !== -1) {
+                updatedHistory[chatIndex] = {
+                  ...updatedHistory[chatIndex],
+                  messages: [...updatedHistory[chatIndex].messages, newBotMessage]
+                };
+                saveChatHistory(updatedHistory);
+              }
+              return updatedHistory;
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching AI response:', error);
+        } finally {
+          setIsLoading(false);
+          setTimeout(scrollToBottom, 100);
         }
+      }, [isNewChatPrompt, createNewChat, activeChat, activeChatId, scrollToBottom]);
+
+      const handleSendMessage = useCallback(() => {
+        const input = messageInputRef.current;
+        const message = input.value.trim();
         
-        setMessageInput('');
+        if (message) {
+          sendMessage(message);
+          input.value = '';
+        }
+      }, [sendMessage]);
+
+      const handleKeyPress = useCallback((e) => {
+        if (e.key === 'Enter') {
+          handleSendMessage();
+        }
+      }, [handleSendMessage]);
+
+      const handleDragStart = useCallback((e) => {
+        if (e.target.className.includes('draggable-header')) {
+          setIsDragging(true);
+          setDragStart({
+            x: e.clientX - position.x,
+            y: e.clientY - position.y
+          });
+          e.preventDefault();
+        }
+      }, [position.x, position.y]);
+
+      const handleDrag = useCallback((e) => {
+        if (isDragging) {
+          const newX = e.clientX - dragStart.x;
+          const newY = e.clientY - dragStart.y;
+          
+          const boundedX = Math.max(0, Math.min(window.innerWidth - size.width, newX));
+          const boundedY = Math.max(0, Math.min(window.innerHeight - size.height, newY));
+          
+          setPosition({
+            x: boundedX,
+            y: boundedY
+          });
+        }
+      }, [isDragging, dragStart.x, dragStart.y, size.width, size.height]);
+
+      const handleDragEnd = useCallback(() => {
+        setIsDragging(false);
+      }, []);
+
+      const handleResizeStart = useCallback((e) => {
+        setIsResizing(true);
+        setResizeStart({
+          x: e.clientX,
+          y: e.clientY,
+          width: size.width,
+          height: size.height
+        });
+        e.preventDefault();
+      }, [size.width, size.height]);
+
+      const handleResize = useCallback((e) => {
+        if (isResizing) {
+          const deltaX = e.clientX - resizeStart.x;
+          const deltaY = e.clientY - resizeStart.y;
+          
+          const newWidth = Math.max(300, resizeStart.width + deltaX);
+          const newHeight = Math.max(400, resizeStart.height + deltaY);
+          
+          setSize({
+            width: newWidth,
+            height: newHeight
+          });
+        }
+      }, [isResizing, resizeStart.x, resizeStart.y, resizeStart.width, resizeStart.height]);
+
+      const handleResizeEnd = useCallback(() => {
+        setIsResizing(false);
+      }, []);
+
+      useEffect(() => {
+        const handleMouseMove = (e) => {
+          if (isDragging) handleDrag(e);
+          if (isResizing) handleResize(e);
+        };
+
+        const handleMouseUp = () => {
+          if (isDragging) handleDragEnd();
+          if (isResizing) handleResizeEnd();
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
         
-        // 模拟AI回复
-        setTimeout(() => {
-          const aiResponse = {
-            id: generateId(),
-            text: `这是对"${text}"的模拟回复`,
-            sender: 'assistant',
-            timestamp: Date.now()
+        const toggleButton = document.getElementById('toggle-chat');
+        if (toggleButton) {
+          const handleToggleClick = () => {
+            const newIsOpen = !isOpen;
+            setIsOpen(newIsOpen);
+            if (newIsOpen && !activeChatId && !isNewChatPrompt) {
+              if (chatHistory.length > 0) {
+                loadChat(chatHistory[0].id);
+              } else {
+                startNewChatPrompt();
+              }
+            }
+            
+            if (!newIsOpen) {
+              saveChatState({
+                position,
+                size
+              });
+            }
           };
           
-          const withAiResponse = {
-            ...updatedChat,
-            messages: [...updatedMessages, aiResponse],
-            title: text.length > 20 ? `${text.substring(0, 20)}...` : text
-          };
+          toggleButton.addEventListener('click', handleToggleClick);
           
-          setChats(chats.map(chat => 
-            chat.id === updatedChat.id ? withAiResponse : chat
-          ));
-        }, 1000);
-      };
-      
-      const deleteChat = (chatId, e) => {
-        e.stopPropagation();
-        const updatedChats = chats.filter(chat => chat.id !== chatId);
-        setChats(updatedChats);
-        if (activeChatId === chatId) {
-          setActiveChatId(null);
+          return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            toggleButton.removeEventListener('click', handleToggleClick);
+          };
         }
-      };
-      
+      }, [isOpen, activeChatId, isNewChatPrompt, isDragging, isResizing, 
+          handleDrag, handleResize, handleDragEnd, handleResizeEnd, 
+          startNewChatPrompt, position, size, chatHistory, loadChat]);
+
+      useEffect(() => {
+        const handleResizeWindow = () => {
+          if (!isMaximized) {
+            setPosition({
+              x: Math.min(position.x, window.innerWidth - size.width),
+              y: Math.min(position.y, window.innerHeight - size.height)
+            });
+          }
+        };
+        
+        window.addEventListener('resize', handleResizeWindow);
+        return () => window.removeEventListener('resize', handleResizeWindow);
+      }, [isMaximized, position, size]);
+
+      useEffect(() => {
+        if (isOpen && activeChat?.messages?.length > 0) {
+          scrollToBottom();
+        }
+      }, [isOpen, activeChat?.messages, scrollToBottom]);
+
+      if (!isOpen) return null;
+
       return (
-        <div className="floating-chat">
-          <div className="chat-header">
-            <div className="chat-title">智能助手</div>
-            <button 
-              className="close-btn"
-              onClick={() => setIsMinimized(!isMinimized)}
-            >
-              {isMinimized ? '+' : '-'}
-            </button>
+        <div 
+          ref={chatWindowRef}
+          className={`chat-window ${isMaximized ? 'maximized' : ''}`}
+          style={{
+            left: isMaximized ? '20px' : `${position.x}px`,
+            top: isMaximized ? '20px' : `${position.y}px`,
+            width: isMaximized ? 'calc(100vw - 40px)' : `${size.width}px`,
+            height: isMaximized ? 'calc(100vh - 40px)' : `${size.height}px`,
+          }}
+        >
+          <div 
+            className="draggable-header chat-header"
+            onMouseDown={handleDragStart}
+          >
+            <div className="chat-title">AI Chat Assistant</div>
+            <div className="chat-controls">
+              <button onClick={() => setIsMaximized(!isMaximized)}>
+                {isMaximized ? '🗗' : '🗖'}
+              </button>
+              <button onClick={() => setIsOpen(false)}>×</button>
+            </div>
           </div>
           
-          {!isMinimized && (
-            <>
-              <div className="chat-tabs">
-                <div 
-                  className={`chat-tab ${activeTab === 'chat' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('chat')}
-                >
-                  聊天
+          <div className="sidebar">
+            <button 
+              className="new-chat-btn"
+              onClick={startNewChatPrompt}
+              title="Start a new conversation"
+            >
+              + New Chat
+            </button>
+            
+            {chatHistory.map(chat => (
+              <div
+                key={chat.id}
+                className={`history-item ${activeChatId === chat.id ? 'active' : ''}`}
+                onClick={() => loadChat(chat.id)}
+                title={`${chat.title}\n${formatTime(chat.timestamp)}`}
+              >
+                <div className="history-item-content">
+                  {chat.title}
+                  <div className="time">{formatTime(chat.timestamp)}</div>
                 </div>
-                <div 
-                  className={`chat-tab ${activeTab === 'history' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('history')}
+                <button 
+                  className="delete-chat-btn"
+                  onClick={(e) => deleteChat(chat.id, e)}
+                  title="Delete this chat"
                 >
-                  历史记录
-                </div>
-                <div 
-                  className="chat-tab new-chat"
-                  onClick={createNewChat}
-                >
-                  + 新对话
+                  <svg className="trash-icon">
+                    <use xlinkHref="#trash-icon" />
+                  </svg>
+                </button>
+              </div>
+            ))}
+          </div>
+          
+          <div className="chat-content">
+            {isNewChatPrompt ? (
+              <div className="new-chat-prompt">
+                <h3>Start a New Chat</h3>
+                <p>Type your first message to begin a new conversation</p>
+                <div className="input-area">
+                  <input
+                    ref={messageInputRef}
+                    type="text"
+                    className="message-input"
+                    placeholder="Type your first message..."
+                    onKeyPress={handleKeyPress}
+                  />
+                  <button 
+                    className="send-button"
+                    onClick={handleSendMessage}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? '...' : 'Start Chat'}
+                  </button>
                 </div>
               </div>
-              
-              {activeTab === 'chat' ? (
-                <>
-                  <div className="messages-container">
-                    {activeChat?.messages.map(message => (
-                      <div 
-                        key={message.id} 
-                        className={`message ${message.sender}`}
-                      >
-                        <div className="message-bubble">{message.text}</div>
-                        <div className="message-time">
-                          {message.sender === 'user' ? '你' : '助手'} · {formatTime(message.timestamp)}
-                        </div>
-                      </div>
-                    ))}
-                    <div ref={messagesEndRef} />
-                  </div>
-                  
-                  <div className="input-area">
-                    <textarea
-                      className="message-input"
-                      placeholder="输入消息..."
-                      value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
-                      onKeyPress={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          sendMessage(messageInput);
-                        }
-                      }}
-                    />
-                    <button 
-                      className="send-btn"
-                      onClick={() => sendMessage(messageInput)}
+            ) : activeChat ? (
+              <>
+                <div className="messages-container" ref={messagesContainerRef}>
+                  {activeChat.messages.map(message => (
+                    <div 
+                      key={message.id} 
+                      className={`message ${message.sender}`}
                     >
-                      发送
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="chat-list">
-                  {chats.map(chat => (
-                    <div
-                      key={chat.id}
-                      className={`chat-item ${activeChatId === chat.id ? 'active' : ''}`}
-                      onClick={() => {
-                        setActiveChatId(chat.id);
-                        setActiveTab('chat');
-                      }}
-                    >
-                      <div className="chat-item-title">
-                        {chat.title}
+                      <div className="message-bubble">{message.text}</div>
+                      <div className="message-time">
+                        {message.sender === 'user' ? 'You' : 'Assistant'} · {formatTime(message.timestamp)}
                       </div>
-                      <div className="chat-item-time">
-                        {formatTime(chat.timestamp)}
-                      </div>
-                      <button 
-                        className="delete-chat-btn"
-                        onClick={(e) => deleteChat(chat.id, e)}
-                      >
-                        删除
-                      </button>
                     </div>
                   ))}
+                  <div ref={messagesEndRef} />
                 </div>
-              )}
-            </>
+                
+                <div className="input-area">
+                  <input
+                    ref={messageInputRef}
+                    type="text"
+                    className="message-input"
+                    placeholder="Type a message..."
+                    onKeyPress={handleKeyPress}
+                    disabled={isLoading}
+                  />
+                  <button 
+                    className="send-button"
+                    onClick={handleSendMessage}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? '...' : 'Send'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="new-chat-prompt">
+                <h3>Welcome to AI Chat Assistant</h3>
+                <p>Click "New Chat" to start a conversation</p>
+              </div>
+            )}
+          </div>
+          
+          {!isMaximized && (
+            <div 
+              className="resize-handle"
+              onMouseDown={handleResizeStart}
+            ></div>
           )}
         </div>
       );
     };
-    
+
     ReactDOM.render(<FloatingChatApp />, document.getElementById('chat-root'));
   </script>
 </body>
