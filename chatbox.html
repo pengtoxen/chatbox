@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>智能聊天助手</title>
+  <title>AI Chat Assistant</title>
   <style>
-    /* 原有所有样式完全保留 */
     body {
       font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
       margin: 0;
@@ -50,10 +50,9 @@
     }
 
     .chat-window {
-      width: 400px;
+      width: 450px;
       height: 500px;
       background-color: white;
-      border-radius: 12px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
       display: flex;
       overflow: hidden;
@@ -61,8 +60,9 @@
       right: 20px;
       bottom: 20px;
       z-index: 1000;
-      transition: all 0.3s ease;
-      will-change: transform; /* 优化拖动流畅度 */
+      resize: both;
+      min-width: 400px;
+      min-height: 400px;
     }
 
     .chat-window.maximized {
@@ -70,6 +70,7 @@
       height: calc(100vh - 40px);
       right: 20px;
       bottom: 20px;
+      resize: none;
     }
 
     .chat-header {
@@ -89,18 +90,17 @@
 
     .chat-title {
       font-weight: 600;
-      font-size: 16px;
+      font-size: 14px;
     }
 
     .chat-controls button {
       background: none;
       border: none;
       color: white;
-      font-size: 16px;
+      font-size: 14px;
       cursor: pointer;
       margin-left: 12px;
       padding: 4px;
-      border-radius: 4px;
     }
 
     .chat-controls button:hover {
@@ -110,21 +110,34 @@
     .sidebar {
       width: 140px;
       background-color: #2c3e50;
-      color: white;
+      color:white;
       padding: 16px 12px;
       overflow-y: auto;
       border-right: 1px solid #1a252f;
       margin-top: 48px;
+      font-size: 12px;
+    }
+
+    .sidebar::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .sidebar::-webkit-scrollbar-track {
+      background: #1a252f;
+    }
+
+    .sidebar::-webkit-scrollbar-thumb {
+      background-color: #3498db;
+      border-radius: 3px;
     }
 
     .new-chat-btn {
       background-color: #3498db;
       color: white;
       border: none;
-      border-radius: 6px;
       padding: 8px 12px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 12px;
       width: 100%;
       margin-bottom: 16px;
       transition: background-color 0.2s;
@@ -135,25 +148,55 @@
     }
 
     .history-item {
-      padding: 10px;
+      padding: 8px;
       margin-bottom: 8px;
-      border-radius: 6px;
       cursor: pointer;
       transition: background-color 0.2s;
-      font-size: 14px;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
 
-    .history-item:hover, .history-item.active {
+    .history-item-content {
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .history-item:hover,
+    .history-item.active {
       background-color: #3498db;
     }
 
     .history-item .time {
-      font-size: 12px;
+      font-size: 10px;
       color: #bdc3c7;
       margin-top: 4px;
+    }
+
+    .delete-chat-btn {
+      background: none;
+      border: none;
+      color: #e74c3c;
+      cursor: pointer;
+      font-size: 12px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      padding: 2px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .history-item:hover .delete-chat-btn {
+      opacity: 1;
+    }
+
+    .delete-chat-btn:hover {
+      color: #c0392b;
     }
 
     .chat-content {
@@ -163,37 +206,21 @@
       margin-top: 48px;
     }
 
-    .welcome-input-container {
+    .new-chat-prompt {
       padding: 24px;
       text-align: center;
       color: #666;
     }
 
-    .welcome-input-container h3 {
+    .new-chat-prompt h3 {
       margin-top: 0;
       color: #2c3e50;
+      font-size: 14px;
     }
 
-    .welcome-input-container p {
+    .new-chat-prompt p {
       margin-bottom: 16px;
-    }
-
-    .welcome-input {
-      width: 80%;
-      padding: 12px 16px;
-      border: 1px solid #ddd;
-      border-radius: 24px;
-      font-size: 15px;
-      margin-bottom: 16px;
-    }
-
-    .welcome-submit {
-      padding: 10px 20px;
-      background-color: #3498db;
-      color: white;
-      border: none;
-      border-radius: 24px;
-      cursor: pointer;
+      font-size: 12px;
     }
 
     .messages-container {
@@ -219,29 +246,34 @@
 
     .message-bubble {
       max-width: 80%;
-      padding: 12px 16px;
-      border-radius: 18px;
+      padding: 10px 14px;
       word-wrap: break-word;
       box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
-      font-size: 15px;
+      font-size: 13px;
+      position: relative;
     }
 
     .message.user .message-bubble {
       background-color: #3498db;
       color: white;
-      border-bottom-right-radius: 4px;
     }
 
     .message.bot .message-bubble {
       background-color: #e9ecef;
       color: black;
-      border-bottom-left-radius: 4px;
     }
 
     .message-time {
-      font-size: 12px;
+      font-size: 10px;
       color: #666;
       margin-top: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .message-sender {
+      margin-right: 8px;
     }
 
     .input-area {
@@ -253,12 +285,11 @@
 
     .message-input {
       flex: 1;
-      padding: 12px 16px;
+      padding: 10px 14px;
       border: 1px solid #ddd;
-      border-radius: 24px;
       outline: none;
       margin-right: 12px;
-      font-size: 15px;
+      font-size: 13px;
       transition: border-color 0.2s;
     }
 
@@ -267,13 +298,13 @@
     }
 
     .send-button {
-      padding: 12px 20px;
+      padding: 10px 16px;
       background-color: #3498db;
       color: white;
       border: none;
-      border-radius: 24px;
       cursor: pointer;
       font-weight: 600;
+      font-size: 13px;
       transition: background-color 0.2s;
     }
 
@@ -281,26 +312,100 @@
       background-color: #2980b9;
     }
 
-    /* 新增的调整大小手柄样式 */
     .resize-handle {
       position: absolute;
-      width: 12px;
-      height: 12px;
-      background: #3498db;
-      z-index: 1001;
-      opacity: 0;
-      transition: opacity 0.2s;
-    }
-    .chat-window:hover .resize-handle {
-      opacity: 1;
-    }
-    .resize-handle-bottom-right {
       right: 0;
       bottom: 0;
-      cursor: nwse-resize;
+      width: 12px;
+      height: 12px;
+      cursor: se-resize;
+      z-index: 100;
+    }
+
+    .trash-icon {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+    }
+
+    /* 反馈和复制功能样式 */
+    .message-actions {
+      display: flex;
+      gap: 8px;
+      margin-left: auto;
+    }
+
+    .action-button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 2px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .message.bot:hover .action-button,
+    .message.bot .action-button.active {
+      opacity: 1;
+    }
+
+    .icon {
+      width: 14px;
+      height: 14px;
+      transition: fill 0.2s;
+    }
+
+    .like-icon {
+      fill: #666;
+    }
+
+    .like-icon.liked {
+      fill: #e74c3c;
+    }
+
+    .dislike-icon {
+      fill: #666;
+    }
+
+    .dislike-icon.disliked {
+      fill: #3498db;
+    }
+
+    .copy-icon {
+      fill: #666;
+    }
+
+    .copy-icon.copied {
+      fill: #2ecc71;
+    }
+
+    .feedback-status {
+      font-size: 10px;
+      color: #666;
+      margin-left: 4px;
+      display: none;
+    }
+
+    .action-button.active .feedback-status {
+      display: inline;
+    }
+
+    /* 打字光标效果 */
+    .typing-cursor {
+      animation: blink 1s step-end infinite;
+      color: #3498db;
+    }
+
+    @keyframes blink {
+      from, to { opacity: 1; }
+      50% { opacity: 0; }
     }
   </style>
 </head>
+
 <body>
   <button id="toggle-chat" class="chat-toggle-button">💬</button>
   <div id="chat-root"></div>
@@ -309,61 +414,371 @@
   <script src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+    <symbol id="trash-icon" viewBox="0 0 24 24">
+      <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" />
+    </symbol>
+
+    <!-- 点赞图标 (竖起大拇指) -->
+    <symbol id="like-icon" viewBox="0 0 24 24">
+      <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"/>
+    </symbol>
+
+    <!-- 点踩图标 (倒置大拇指) -->
+    <symbol id="dislike-icon" viewBox="0 0 24 24">
+      <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z" transform="rotate(180 12 12)"/>
+    </symbol>
+
+    <symbol id="copy-icon" viewBox="0 0 24 24">
+      <path
+        d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" />
+    </symbol>
+  </svg>
+
   <script type="text/babel">
-    const { useState, useRef, useEffect } = React;
+    const { useState, useRef, useEffect, useCallback } = React;
 
     const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
 
     const loadChatHistory = () => {
-      const history = localStorage.getItem('chatHistory');
-      return history ? JSON.parse(history) : [];
+      try {
+        const history = localStorage.getItem('chatHistory');
+        return history ? JSON.parse(history) : [];
+      } catch (e) {
+        console.error('Error loading chat history:', e);
+        return [];
+      }
     };
 
     const saveChatHistory = (history) => {
-      localStorage.setItem('chatHistory', JSON.stringify(history));
+      try {
+        localStorage.setItem('chatHistory', JSON.stringify(history));
+      } catch (e) {
+        console.error('Error saving chat history:', e);
+      }
+    };
+
+    const loadChatState = () => {
+      try {
+        const state = localStorage.getItem('chatState');
+        if (state) {
+          const parsedState = JSON.parse(state);
+          return {
+            position: parsedState.position || { x: window.innerWidth - 470, y: window.innerHeight - 520 },
+            size: parsedState.size || { width: 450, height: 500 }
+          };
+        }
+        return {
+          position: { x: window.innerWidth - 470, y: window.innerHeight - 520 },
+          size: { width: 450, height: 500 }
+        };
+      } catch (e) {
+        console.error('Error loading chat state:', e);
+        return {
+          position: { x: window.innerWidth - 470, y: window.innerHeight - 520 },
+          size: { width: 450, height: 500 }
+        };
+      }
+    };
+
+    const saveChatState = (state) => {
+      try {
+        localStorage.setItem('chatState', JSON.stringify(state));
+      } catch (e) {
+        console.error('Error saving chat state:', e);
+      }
+    };
+
+    const loadFeedback = () => {
+      try {
+        const feedback = localStorage.getItem('messageFeedback');
+        return feedback ? JSON.parse(feedback) : {};
+      } catch (e) {
+        console.error('Error loading feedback:', e);
+        return {};
+      }
+    };
+
+    const saveFeedback = (feedback) => {
+      try {
+        localStorage.setItem('messageFeedback', JSON.stringify(feedback));
+      } catch (e) {
+        console.error('Error saving feedback:', e);
+      }
+    };
+
+    const copyToClipboard = (text) => {
+      navigator.clipboard.writeText(text).then(() => {
+        console.log('Text copied to clipboard');
+      }).catch(err => {
+        console.error('Failed to copy text: ', err);
+      });
     };
 
     const formatTime = (timestamp) => {
       const now = Date.now();
       const diff = now - timestamp;
       const date = new Date(timestamp);
-      
-      if (diff < 60000) return '刚刚';
-      if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
-      if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
-      if (diff < 604800000) return `${Math.floor(diff / 86400000)}天前`;
+
+      if (diff < 60000) return 'Just now';
+      if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+      if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+      if (diff < 604800000) return `${Math.floor(diff / 86400000)}d ago`;
       return date.toLocaleDateString();
+    };
+
+    const fetchAIResponse = async (message) => {
+      // 模拟API延迟
+      await new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 1000));
+      
+      // 长回复示例
+      const longResponses = [
+        `这是一个较长的AI回复示例，演示逐字输出效果。\n\n当AI回复内容较长时，我们希望它能逐字显示，给用户更自然的交互体验。\n\n这种效果特别适合解释性内容、详细说明或多段落回复。`,
+        `让我们详细分析这个问题：\n\n1. 首先，需要考虑问题的背景和上下文\n2. 然后，分析可能的影响因素\n3. 最后，提出解决方案和建议\n\n这种结构化的长回复很适合逐字显示。`,
+        `感谢您的提问。为了给您最准确的回答，我需要详细解释几个关键点：\n\n- 概念定义：首先明确问题的核心概念\n- 影响因素：分析影响结果的多个变量\n- 应用场景：讨论在实际中的应用\n- 注意事项：提醒需要注意的关键点\n\n这样分步骤的回复方式能让信息更易于理解。`
+      ];
+      
+      // 短回复示例
+      const shortResponses = [
+        '明白了。',
+        '好的。',
+        '我理解。',
+        '请继续。',
+        '收到。',
+        '嗯。',
+        '是的。',
+        '不是。'
+      ];
+      
+      // 根据输入长度决定返回长回复还是短回复
+      const response = message.length > 30 
+        ? longResponses[Math.floor(Math.random() * longResponses.length)]
+        : shortResponses[Math.floor(Math.random() * shortResponses.length)];
+      
+      return {
+        success: true,
+        data: {
+          response,
+          timestamp: Date.now(),
+          isLongResponse: message.length > 30 // 标记是否为长回复
+        }
+      };
     };
 
     const FloatingChatApp = () => {
       const [isOpen, setIsOpen] = useState(false);
       const [isMaximized, setIsMaximized] = useState(false);
-      const [position, setPosition] = useState({ x: window.innerWidth - 420, y: window.innerHeight - 520 });
-      const [size, setSize] = useState({ width: 400, height: 500 });
+      const savedState = loadChatState();
+      const [position, setPosition] = useState(savedState.position);
+      const [size, setSize] = useState(savedState.size);
       const [chatHistory, setChatHistory] = useState(loadChatHistory());
       const [activeChatId, setActiveChatId] = useState(null);
       const [activeChat, setActiveChat] = useState(null);
-      const [isDragging, setIsDragging] = useState(false);
-      const [isResizing, setIsResizing] = useState(false);
       const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
       const [resizeStart, setResizeStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
+      const [isNewChatPrompt, setIsNewChatPrompt] = useState(false);
+      const [isLoading, setIsLoading] = useState(false);
+      const [feedback, setFeedback] = useState(loadFeedback());
+      const [copiedId, setCopiedId] = useState(null);
+      const [enlargedImage, setEnlargedImage] = useState(null);
       const chatWindowRef = useRef(null);
-      const [welcomeInput, setWelcomeInput] = useState('');
+      const messagesEndRef = useRef(null);
+      const messageInputRef = useRef(null);
+      const messagesContainerRef = useRef(null);
+      const typingTimers = useRef({});
 
-      const startNewChat = () => {
+      // 用 useRef 追踪拖拽和缩放状态，彻底移除 useState 相关冗余
+      const isDraggingRef = useRef(false);
+      const isResizingRef = useRef(false);
+      // 节流函数和节流后的 setPosition/setSize
+      function throttle(func, wait) {
+        let lastTime = 0;
+        let timeout;
+        return function (...args) {
+          const now = Date.now();
+          if (now - lastTime >= wait) {
+            lastTime = now;
+            func.apply(this, args);
+          } else {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+              lastTime = Date.now();
+              func.apply(this, args);
+            }, wait - (now - lastTime));
+          }
+        };
+      }
+      const throttledSetPosition = useRef(throttle(setPosition, 16));
+      const throttledSetSize = useRef(throttle(setSize, 16));
+
+      const scrollToBottom = useCallback(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
+      }, []);
+
+      const startNewChatPrompt = useCallback(() => {
+        setIsNewChatPrompt(true);
+        setActiveChatId(null);
+        setActiveChat(null);
+        setTimeout(() => {
+          if (messageInputRef.current) {
+            messageInputRef.current.focus();
+          }
+        }, 0);
+      }, []);
+
+      const handleFeedback = useCallback((messageId, type) => {
+        setFeedback(prev => {
+          const newFeedback = { ...prev };
+
+          if (newFeedback[messageId]) {
+            if (newFeedback[messageId].type === type) {
+              delete newFeedback[messageId];
+            } else {
+              newFeedback[messageId] = { type, timestamp: Date.now() };
+            }
+          } else {
+            newFeedback[messageId] = { type, timestamp: Date.now() };
+          }
+
+          saveFeedback(newFeedback);
+          return newFeedback;
+        });
+      }, []);
+
+      const handleCopy = useCallback((messageId, text) => {
+        copyToClipboard(text);
+        setCopiedId(messageId);
+        setTimeout(() => setCopiedId(null), 2000);
+      }, []);
+
+      const createNewChat = useCallback(async (firstMessage) => {
+        if (!firstMessage.trim()) return;
+
         const newChatId = generateId();
+        const chatTitle = firstMessage.length > 20
+          ? firstMessage.substring(0, 20) + '...'
+          : firstMessage;
+
+        const newUserMessage = {
+          id: generateId(),
+          text: firstMessage,
+          sender: 'user',
+          timestamp: Date.now()
+        };
+
         const newChat = {
           id: newChatId,
-          title: '新对话',
-          messages: [],
+          title: chatTitle,
+          messages: [newUserMessage],
           timestamp: Date.now(),
-          isNew: true
+          isNew: false
         };
+
         setActiveChatId(newChatId);
         setActiveChat(newChat);
-      };
+        setIsNewChatPrompt(false);
 
-      const loadChat = (chatId) => {
+        setChatHistory(prev => {
+          const newHistory = [newChat, ...prev];
+          saveChatHistory(newHistory);
+          return newHistory;
+        });
+
+        setIsLoading(true);
+        try {
+          const response = await fetchAIResponse(firstMessage);
+          if (response.success) {
+            const newBotMessage = {
+              id: generateId(),
+              text: '', // 初始为空
+              fullText: response.data.response, // 保存完整文本
+              sender: 'bot',
+              timestamp: response.data.timestamp,
+              isTyping: response.data.isLongResponse // 是否需要逐字显示
+            };
+
+            setActiveChat(prev => ({
+              ...prev,
+              messages: [...prev.messages, newBotMessage]
+            }));
+
+            // 如果是长回复，启动逐字显示效果
+            if (response.data.isLongResponse) {
+              let displayedText = '';
+              const fullText = response.data.response;
+              const messageId = newBotMessage.id;
+              
+              typingTimers.current[messageId] = setInterval(() => {
+                if (displayedText.length < fullText.length) {
+                  displayedText = fullText.substring(0, displayedText.length + 1);
+                  setActiveChat(prev => {
+                    const updatedMessages = [...prev.messages];
+                    const lastMessage = updatedMessages[updatedMessages.length - 1];
+                    if (lastMessage.sender === 'bot') {
+                      lastMessage.text = displayedText;
+                    }
+                    return { ...prev, messages: updatedMessages };
+                  });
+                  scrollToBottom();
+                } else {
+                  clearInterval(typingTimers.current[messageId]);
+                  delete typingTimers.current[messageId];
+                  setActiveChat(prev => {
+                    const updatedMessages = [...prev.messages];
+                    const lastMessage = updatedMessages[updatedMessages.length - 1];
+                    if (lastMessage.sender === 'bot') {
+                      lastMessage.isTyping = false;
+                    }
+                    return { ...prev, messages: updatedMessages };
+                  });
+                }
+              }, 30); // 每30毫秒显示一个字
+            } else {
+              // 短回复直接显示
+              setActiveChat(prev => {
+                const updatedMessages = [...prev.messages];
+                const lastMessage = updatedMessages[updatedMessages.length - 1];
+                if (lastMessage.sender === 'bot') {
+                  lastMessage.text = response.data.response;
+                }
+                return { ...prev, messages: updatedMessages };
+              });
+            }
+
+            // 更新历史记录
+            setChatHistory(prev => {
+              const updatedHistory = [...prev];
+              const chatIndex = updatedHistory.findIndex(chat => chat.id === newChatId);
+              if (chatIndex !== -1) {
+                updatedHistory[chatIndex] = {
+                  ...updatedHistory[chatIndex],
+                  messages: [...updatedHistory[chatIndex].messages, {
+                    ...newBotMessage,
+                    text: response.data.response // 历史记录中保存完整文本
+                  }]
+                };
+                saveChatHistory(updatedHistory);
+              }
+              return updatedHistory;
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching AI response:', error);
+        } finally {
+          setIsLoading(false);
+          setTimeout(() => {
+            scrollToBottom();
+            // 恢复输入框焦点
+            if (messageInputRef.current) {
+              messageInputRef.current.focus();
+            }
+          }, 100);
+        }
+      }, [scrollToBottom]);
+
+      const loadChat = useCallback((chatId) => {
         const chatFromHistory = chatHistory.find(chat => chat.id === chatId);
         if (chatFromHistory) {
           setActiveChatId(chatId);
@@ -371,191 +786,299 @@
             ...chatFromHistory,
             isNew: false
           });
+          setIsNewChatPrompt(false);
+          setTimeout(() => {
+            scrollToBottom();
+            if (messageInputRef.current) {
+              messageInputRef.current.focus();
+            }
+          }, 100);
         }
-      };
+      }, [chatHistory, scrollToBottom]);
 
-      const saveCurrentChat = () => {
-        if (!activeChat || activeChat.messages.filter(msg => msg.sender === 'user').length === 0) return;
-        
-        const userMessages = activeChat.messages.filter(msg => msg.sender === 'user');
-        const firstUserMessage = userMessages[0].text;
-        const chatTitle = firstUserMessage.length > 20 
-          ? firstUserMessage.substring(0, 20) + '...' 
-          : firstUserMessage;
-        
-        const updatedChat = {
-          ...activeChat,
-          title: chatTitle,
-          timestamp: Date.now(),
-          isNew: false
-        };
-        
+      const deleteChat = useCallback((chatId, e) => {
+        e.stopPropagation();
+
+        if (activeChatId === chatId) {
+          setActiveChatId(null);
+          setActiveChat(null);
+        }
+
         setChatHistory(prev => {
-          const existingIndex = prev.findIndex(chat => chat.id === updatedChat.id);
-          const newHistory = existingIndex >= 0 
-            ? [...prev.slice(0, existingIndex), updatedChat, ...prev.slice(existingIndex + 1)]
-            : [updatedChat, ...prev];
-          
+          const newHistory = prev.filter(chat => chat.id !== chatId);
           saveChatHistory(newHistory);
           return newHistory;
         });
-      };
+      }, [activeChatId]);
 
-      const handleDrag = useRef((e) => {
-        if (isDragging) {
-          const newX = e.clientX - dragStart.x;
-          const newY = e.clientY - dragStart.y;
-          
-          const boundedX = Math.max(0, Math.min(window.innerWidth - size.width, newX));
-          const boundedY = Math.max(0, Math.min(window.innerHeight - size.height, newY));
-          
-          setPosition({
-            x: boundedX,
-            y: boundedY
-          });
-        }
-        
-        if (isResizing) {
-          const deltaX = e.clientX - resizeStart.x;
-          const deltaY = e.clientY - resizeStart.y;
-          
-          setSize({
-            width: Math.max(300, Math.min(800, resizeStart.width + deltaX)),
-            height: Math.max(300, Math.min(600, resizeStart.height + deltaY))
-          });
-        }
-      }).current;
-
-      const handleResizeStart = (e) => {
-        setIsResizing(true);
-        setResizeStart({
-          x: e.clientX,
-          y: e.clientY,
-          width: size.width,
-          height: size.height
-        });
-        e.stopPropagation();
-        e.preventDefault();
-      };
-
-      const sendMessage = (text) => {
+      const sendMessage = useCallback(async (text) => {
         if (!text.trim()) return;
-        
+
+        if (isNewChatPrompt) {
+          await createNewChat(text);
+          return;
+        }
+
         const newUserMessage = {
           id: generateId(),
           text: text,
           sender: 'user',
           timestamp: Date.now()
         };
-        
+
         const updatedMessages = [...(activeChat?.messages || []), newUserMessage];
         const updatedChat = {
-          ...(activeChat || { id: generateId(), title: '新对话', isNew: false }),
+          ...(activeChat || { id: generateId(), title: 'New Chat', isNew: false }),
           messages: updatedMessages,
           isNew: false
         };
-        
+
         setActiveChat(updatedChat);
         if (!activeChatId) setActiveChatId(updatedChat.id);
-        
-        if (updatedMessages.filter(m => m.sender === 'user').length === 1) {
-          const firstUserMessage = updatedMessages.find(m => m.sender === 'user').text;
-          const chatTitle = firstUserMessage.length > 20 
-            ? firstUserMessage.substring(0, 20) + '...' 
-            : firstUserMessage;
-          
-          const chatToSave = {
-            ...updatedChat,
-            title: chatTitle,
-            timestamp: Date.now()
-          };
-          
-          setChatHistory(prev => {
-            const newHistory = [chatToSave, ...prev];
-            saveChatHistory(newHistory);
-            return newHistory;
-          });
-        }
-        
-        setTimeout(() => {
-          const botResponses = [
-            '我明白了，请继续。',
-            '这是一个有趣的观点。',
-            '你能详细说明一下吗？',
-            '我会记住这个信息。',
-            '谢谢分享！',
-            '我还在学习中，请耐心等待我的进步。',
-            '这个问题很有意思，让我想想...',
-            '根据我的理解，你是在问...',
-            '让我查一下相关资料...',
-            '这是一个常见问题，解决方案是...'
-          ];
-          const randomResponse = botResponses[Math.floor(Math.random() * botResponses.length)];
-          
-          const newBotMessage = {
-            id: generateId(),
-            text: randomResponse,
-            sender: 'bot',
-            timestamp: Date.now()
-          };
-          
-          setActiveChat(prev => ({
-            ...prev,
-            messages: [...prev.messages, newBotMessage]
-          }));
-        }, 800 + Math.random() * 1000);
-      };
 
-      const handleWelcomeSubmit = () => {
-        if (welcomeInput.trim()) {
-          sendMessage(welcomeInput);
-          setWelcomeInput('');
-        }
-      };
+        setChatHistory(prev => {
+          const existingIndex = prev.findIndex(chat => chat.id === updatedChat.id);
+          const newHistory = existingIndex >= 0
+            ? [...prev.slice(0, existingIndex), updatedChat, ...prev.slice(existingIndex + 1)]
+            : [updatedChat, ...prev];
 
-      const handleKeyPress = (e) => {
-        if (e.key === 'Enter') {
-          if (activeChat?.isNew && activeChat.messages.length === 0) {
-            handleWelcomeSubmit();
-          } else {
-            const input = document.querySelector('.message-input');
-            sendMessage(input.value);
-            input.value = '';
+          saveChatHistory(newHistory);
+          return newHistory;
+        });
+
+        setIsLoading(true);
+        try {
+          const response = await fetchAIResponse(text);
+          if (response.success) {
+            const newBotMessage = {
+              id: generateId(),
+              text: '', // 初始为空
+              fullText: response.data.response, // 保存完整文本
+              sender: 'bot',
+              timestamp: response.data.timestamp,
+              isTyping: response.data.isLongResponse // 是否需要逐字显示
+            };
+
+            setActiveChat(prev => ({
+              ...prev,
+              messages: [...prev.messages, newBotMessage]
+            }));
+
+            // 如果是长回复，启动逐字显示效果
+            if (response.data.isLongResponse) {
+              let displayedText = '';
+              const fullText = response.data.response;
+              const messageId = newBotMessage.id;
+              
+              typingTimers.current[messageId] = setInterval(() => {
+                if (displayedText.length < fullText.length) {
+                  displayedText = fullText.substring(0, displayedText.length + 1);
+                  setActiveChat(prev => {
+                    const updatedMessages = [...prev.messages];
+                    const lastMessage = updatedMessages[updatedMessages.length - 1];
+                    if (lastMessage.sender === 'bot') {
+                      lastMessage.text = displayedText;
+                    }
+                    return { ...prev, messages: updatedMessages };
+                  });
+                  scrollToBottom();
+                } else {
+                  clearInterval(typingTimers.current[messageId]);
+                  delete typingTimers.current[messageId];
+                  setActiveChat(prev => {
+                    const updatedMessages = [...prev.messages];
+                    const lastMessage = updatedMessages[updatedMessages.length - 1];
+                    if (lastMessage.sender === 'bot') {
+                      lastMessage.isTyping = false;
+                    }
+                    return { ...prev, messages: updatedMessages };
+                  });
+                }
+              }, 30); // 每30毫秒显示一个字
+            } else {
+              // 短回复直接显示
+              setActiveChat(prev => {
+                const updatedMessages = [...prev.messages];
+                const lastMessage = updatedMessages[updatedMessages.length - 1];
+                if (lastMessage.sender === 'bot') {
+                  lastMessage.text = response.data.response;
+                }
+                return { ...prev, messages: updatedMessages };
+              });
+            }
+
+            // 更新历史记录
+            setChatHistory(prev => {
+              const updatedHistory = [...prev];
+              const chatIndex = updatedHistory.findIndex(chat => chat.id === updatedChat.id);
+              if (chatIndex !== -1) {
+                updatedHistory[chatIndex] = {
+                  ...updatedHistory[chatIndex],
+                  messages: [...updatedHistory[chatIndex].messages, {
+                    ...newBotMessage,
+                    text: response.data.response // 历史记录中保存完整文本
+                  }]
+                };
+                saveChatHistory(updatedHistory);
+              }
+              return updatedHistory;
+            });
           }
+        } catch (error) {
+          console.error('Error fetching AI response:', error);
+        } finally {
+          setIsLoading(false);
+          setTimeout(() => {
+            scrollToBottom();
+            // 恢复输入框焦点
+            if (messageInputRef.current) {
+              messageInputRef.current.focus();
+            }
+          }, 100);
         }
+      }, [isNewChatPrompt, createNewChat, activeChat, activeChatId, scrollToBottom]);
+
+      const handleSendMessage = useCallback(() => {
+        const input = messageInputRef.current;
+        const message = input.value.trim();
+
+        if (message) {
+          sendMessage(message);
+          input.value = '';
+        }
+      }, [sendMessage]);
+
+      const handleKeyPress = useCallback((e) => {
+        if (e.key === 'Enter') {
+          handleSendMessage();
+        }
+      }, [handleSendMessage]);
+
+      const handleDragStart = useCallback((e) => {
+        if (e.target.className.includes('draggable-header')) {
+          isDraggingRef.current = true;
+          setDragStart({
+            x: e.clientX - position.x,
+            y: e.clientY - position.y
+          });
+          e.preventDefault();
+        }
+      }, [position.x, position.y]);
+
+      const handleDrag = useCallback((e) => {
+        if (isDraggingRef.current) {
+          const newX = e.clientX - dragStart.x;
+          const newY = e.clientY - dragStart.y;
+          const boundedX = Math.max(0, Math.min(window.innerWidth - size.width, newX));
+          const boundedY = Math.max(0, Math.min(window.innerHeight - size.height, newY));
+          throttledSetPosition.current({ x: boundedX, y: boundedY });
+        }
+      }, [dragStart.x, dragStart.y, size.width, size.height]);
+
+      const handleDragEnd = useCallback(() => {
+        if (!isDraggingRef.current) return;
+        isDraggingRef.current = false;
+        saveChatState({ position, size });
+      }, [position, size]);
+
+      const handleResizeStart = (e) => {
+        console.log('resize start', e);
+        isResizingRef.current = true;
+        setResizeStart({
+          x: e.clientX,
+          y: e.clientY,
+          width: size.width,
+          height: size.height
+        });
+        e.preventDefault();
       };
+
+      const handleResize = useCallback((e) => {
+        if (isResizingRef.current) {
+          const deltaX = e.clientX - resizeStart.x;
+          const deltaY = e.clientY - resizeStart.y;
+          const newWidth = Math.max(300, resizeStart.width + deltaX);
+          const newHeight = Math.max(400, resizeStart.height + deltaY);
+          throttledSetSize.current({ width: newWidth, height: newHeight });
+        }
+      }, [resizeStart.x, resizeStart.y, resizeStart.width, resizeStart.height]);
+
+      const handleResizeEnd = useCallback((e) => {
+        if (!isResizingRef.current) return;
+        isResizingRef.current = false;
+        if (e && typeof e.clientX === 'number' && typeof e.clientY === 'number') {
+          const deltaX = e.clientX - resizeStart.x;
+          const deltaY = e.clientY - resizeStart.y;
+          const newWidth = Math.max(300, resizeStart.width + deltaX);
+          const newHeight = Math.max(400, resizeStart.height + deltaY);
+          const newSize = { width: newWidth, height: newHeight };
+          setSize(newSize);
+          saveChatState({ position, size: newSize });
+          console.log('ResizeEnd:', newSize);
+        } else {
+          console.log('ResizeEnd: event missing or invalid', e);
+        }
+      }, [position, resizeStart]);
 
       useEffect(() => {
-        document.addEventListener('mousemove', handleDrag);
-        document.addEventListener('mouseup', () => {
-          setIsDragging(false);
-          setIsResizing(false);
-        });
-        
+        // 组件卸载时清除所有定时器
+        return () => {
+          const timers = Object.values(typingTimers.current);
+          timers.forEach(timer => clearInterval(timer));
+        };
+      }, []);
+
+      useEffect(() => {
+        const handleMouseMove = (e) => {
+          if (isMaximized) return;
+          if (isDraggingRef.current) handleDrag(e);
+          if (isResizingRef.current) handleResize(e);
+        };
+
+        const handleMouseUp = (e) => {
+          if (isMaximized) return;
+          if (isDraggingRef.current) handleDragEnd();
+          handleResizeEnd(e); // handleResizeEnd 内部会判断 isResizingRef
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
         const toggleButton = document.getElementById('toggle-chat');
         if (toggleButton) {
-          toggleButton.addEventListener('click', () => {
-            setIsOpen(!isOpen);
-            if (!isOpen && !activeChatId) {
-              startNewChat();
+          const handleToggleClick = () => {
+            const newIsOpen = !isOpen;
+            setIsOpen(newIsOpen);
+            if (newIsOpen && !activeChatId && !isNewChatPrompt) {
+              if (chatHistory.length > 0) {
+                loadChat(chatHistory[0].id);
+              } else {
+                startNewChatPrompt();
+              }
             }
-          });
+
+            if (!newIsOpen) {
+              saveChatState({
+                position,
+                size
+              });
+            }
+          };
+
+          toggleButton.addEventListener('click', handleToggleClick);
+
+          return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            toggleButton.removeEventListener('click', handleToggleClick);
+          };
         }
-        
-        return () => {
-          document.removeEventListener('mousemove', handleDrag);
-          document.removeEventListener('mouseup', () => {
-            setIsDragging(false);
-            setIsResizing(false);
-          });
-          if (toggleButton) {
-            toggleButton.removeEventListener('click', () => setIsOpen(!isOpen));
-          }
-        };
-      }, [isOpen, activeChatId]);
+      }, [isOpen, activeChatId, isNewChatPrompt,
+        handleDrag, handleResize, handleDragEnd, handleResizeEnd,
+        startNewChatPrompt, position, size, chatHistory, loadChat]);
 
       useEffect(() => {
-        const handleResize = () => {
+        const handleResizeWindow = () => {
           if (!isMaximized) {
             setPosition({
               x: Math.min(position.x, window.innerWidth - size.width),
@@ -563,15 +1086,100 @@
             });
           }
         };
-        
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
+
+        window.addEventListener('resize', handleResizeWindow);
+        return () => window.removeEventListener('resize', handleResizeWindow);
       }, [isMaximized, position, size]);
+
+      useEffect(() => {
+        if (isOpen && activeChat?.messages?.length > 0) {
+          scrollToBottom();
+        }
+      }, [isOpen, activeChat?.messages, scrollToBottom]);
+
+      const renderMessage = (message) => (
+        <div key={message.id} className={`message ${message.sender}`}>
+          <div className="message-bubble">
+            {/* 文件或图片消息优先显示 */}
+            {message.isImage && message.fileUrl ? (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <img
+                  src={message.fileUrl}
+                  alt={message.fileName}
+                  style={{ maxWidth: 180, maxHeight: 120, borderRadius: 6, marginBottom: 4, cursor: 'pointer', border: '1px solid #eee' }}
+                  onClick={() => setEnlargedImage({ url: message.fileUrl, name: message.fileName })}
+                />
+                <div style={{ fontSize: 12, color: 'white', wordBreak: 'break-all' }}>{message.fileName}</div>
+              </div>
+            ) : message.fileUrl ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* 本地SVG文件图标 */}
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ marginRight: 4, verticalAlign: 'middle' }}>
+                  <rect x="3" y="3" width="18" height="18" rx="2" fill="#e9ecef" stroke="#b0b0b0" strokeWidth="1.2"/>
+                  <path d="M7 7H17V9H7V7ZM7 11H17V13H7V11ZM7 15H13V17H7V15Z" fill="#3498db"/>
+                </svg>
+                <a href={message.fileUrl} download={message.fileName} style={{ color: 'white', textDecoration: 'underline', wordBreak: 'break-all', fontSize: 13 }}>{message.fileName}</a>
+              </div>
+            ) : null}
+            {/* 普通文本消息 */}
+            {message.text}
+            {message.isTyping && <span className="typing-cursor">|</span>}
+          </div>
+          <div className="message-time">
+            <span className="message-sender">
+              {message.sender === 'user' ? 'You' : 'Assistant'} · {formatTime(message.timestamp)}
+            </span>
+
+            {message.sender === 'bot' && (
+              <div className="message-actions">
+                <button
+                  className={`action-button ${feedback[message.id]?.type === 'like' ? 'active' : ''}`}
+                  onClick={() => handleFeedback(message.id, 'like')}
+                  title="Like this message"
+                >
+                  <svg className={`icon like-icon ${feedback[message.id]?.type === 'like' ? 'liked' : ''}`}>
+                    <use xlinkHref="#like-icon" />
+                  </svg>
+                  {feedback[message.id]?.type === 'like' && (
+                    <span className="feedback-status">Liked</span>
+                  )}
+                </button>
+
+                <button
+                  className={`action-button ${feedback[message.id]?.type === 'dislike' ? 'active' : ''}`}
+                  onClick={() => handleFeedback(message.id, 'dislike')}
+                  title="Dislike this message"
+                >
+                  <svg className={`icon dislike-icon ${feedback[message.id]?.type === 'dislike' ? 'disliked' : ''}`}>
+                    <use xlinkHref="#dislike-icon" />
+                  </svg>
+                  {feedback[message.id]?.type === 'dislike' && (
+                    <span className="feedback-status">Disliked</span>
+                  )}
+                </button>
+
+                <button
+                  className={`action-button ${copiedId === message.id ? 'active' : ''}`}
+                  onClick={() => handleCopy(message.id, message.text)}
+                  title="Copy to clipboard"
+                >
+                  <svg className={`icon copy-icon ${copiedId === message.id ? 'copied' : ''}`}>
+                    <use xlinkHref="#copy-icon" />
+                  </svg>
+                  {copiedId === message.id && (
+                    <span className="feedback-status">Copied!</span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      );
 
       if (!isOpen) return null;
 
       return (
-        <div 
+        <div
           ref={chatWindowRef}
           className={`chat-window ${isMaximized ? 'maximized' : ''}`}
           style={{
@@ -581,20 +1189,11 @@
             height: isMaximized ? 'calc(100vh - 40px)' : `${size.height}px`,
           }}
         >
-          <div 
+          <div
             className="draggable-header chat-header"
-            onMouseDown={(e) => {
-              if (e.target.className.includes('draggable-header')) {
-                setIsDragging(true);
-                setDragStart({
-                  x: e.clientX - position.x,
-                  y: e.clientY - position.y
-                });
-                e.preventDefault();
-              }
-            }}
+            onMouseDown={handleDragStart}
           >
-            <div className="chat-title">智能聊天助手</div>
+            <div className="chat-title">AI Chat Assistant</div>
             <div className="chat-controls">
               <button onClick={() => setIsMaximized(!isMaximized)}>
                 {isMaximized ? '🗗' : '🗖'}
@@ -602,98 +1201,214 @@
               <button onClick={() => setIsOpen(false)}>×</button>
             </div>
           </div>
-          
-          {!isMaximized && (
-            <div 
-              className="resize-handle resize-handle-bottom-right"
-              onMouseDown={handleResizeStart}
-            />
-          )}
-          
+
           <div className="sidebar">
-            <button 
+            <button
               className="new-chat-btn"
-              onClick={() => {
-                saveCurrentChat();
-                startNewChat();
-              }}
+              onClick={startNewChatPrompt}
+              title="Start a new conversation"
             >
-              + 新对话
+              + New Chat
             </button>
-            
+
             {chatHistory.map(chat => (
               <div
                 key={chat.id}
                 className={`history-item ${activeChatId === chat.id ? 'active' : ''}`}
-                onClick={() => {
-                  saveCurrentChat();
-                  loadChat(chat.id);
-                }}
+                onClick={() => loadChat(chat.id)}
+                title={`${chat.title}\n${formatTime(chat.timestamp)}`}
               >
-                {chat.title}
-                <div className="time">{formatTime(chat.timestamp)}</div>
+                <div className="history-item-content">
+                  {chat.title}
+                  <div className="time">{formatTime(chat.timestamp)}</div>
+                </div>
+                <button
+                  className="delete-chat-btn"
+                  onClick={(e) => deleteChat(chat.id, e)}
+                  title="Delete this chat"
+                >
+                  <svg className="trash-icon">
+                    <use xlinkHref="#trash-icon" />
+                  </svg>
+                </button>
               </div>
             ))}
           </div>
-          
+
           <div className="chat-content">
-            {activeChat?.isNew && activeChat.messages.length === 0 ? (
-              <div className="welcome-input-container">
-                <h3>我可以帮助您解答各种问题</h3>
-                <p>请问您有什么想了解的？</p>
-                <input
-                  type="text"
-                  className="welcome-input"
-                  placeholder="请输入您想了解的内容..."
-                  value={welcomeInput}
-                  onChange={(e) => setWelcomeInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  autoFocus
-                />
-                <button 
-                  className="welcome-submit"
-                  onClick={handleWelcomeSubmit}
-                >
-                  发送
-                </button>
-              </div>
-            ) : (
-              <>
-                <div className="messages-container">
-                  {activeChat?.messages.map(message => (
-                    <div 
-                      key={message.id} 
-                      className={`message ${message.sender}`}
-                    >
-                      <div className="message-bubble">{message.text}</div>
-                      <div className="message-time">
-                        {message.sender === 'user' ? '你' : '助手'} · {formatTime(message.timestamp)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
+            {isNewChatPrompt ? (
+              <div className="new-chat-prompt">
+                <h3>Start a New Chat</h3>
+                <p>Type your first message to begin a new conversation</p>
                 <div className="input-area">
                   <input
+                    ref={messageInputRef}
                     type="text"
                     className="message-input"
-                    placeholder="输入消息..."
+                    placeholder="Type your first message..."
                     onKeyPress={handleKeyPress}
                   />
-                  <button 
+                  <button
                     className="send-button"
-                    onClick={() => {
-                      const input = document.querySelector('.message-input');
-                      sendMessage(input.value);
-                      input.value = '';
-                    }}
+                    onClick={handleSendMessage}
+                    disabled={isLoading}
                   >
-                    发送
+                    {isLoading ? '...' : 'Start Chat'}
+                  </button>
+                </div>
+              </div>
+            ) : activeChat ? (
+              <>
+                <div className="messages-container" ref={messagesContainerRef}>
+                  {activeChat.messages.map(renderMessage)}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                <div className="input-area">
+                  <input
+                    ref={messageInputRef}
+                    type="text"
+                    className="message-input"
+                    placeholder="Type a message..."
+                    onKeyPress={handleKeyPress}
+                    disabled={isLoading}
+                  />
+                  <input
+                    type="file"
+                    id="file-upload"
+                    style={{ display: 'none' }}
+                    multiple
+                    accept="image/*,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.txt"
+                    onChange={e => {
+                      const files = Array.from(e.target.files);
+                      if (!files.length) return;
+                      files.forEach(file => {
+                        const reader = new FileReader();
+                        if (file.type.startsWith('image/')) {
+                          reader.onload = (event) => {
+                            const content = event.target.result;
+                            const fileMessage = {
+                              id: generateId(),
+                              text: '',
+                              sender: 'user',
+                              timestamp: Date.now(),
+                              fileName: file.name,
+                              fileType: file.type,
+                              fileUrl: content,
+                              isImage: true
+                            };
+                            setActiveChat(prev => {
+                              if (!prev) return prev;
+                              const updatedMessages = [...prev.messages, fileMessage];
+                              return { ...prev, messages: updatedMessages };
+                            });
+                          };
+                          reader.readAsDataURL(file);
+                        } else {
+                          reader.onload = (event) => {
+                            const blob = new Blob([event.target.result], { type: file.type });
+                            const url = URL.createObjectURL(blob);
+                            const fileMessage = {
+                              id: generateId(),
+                              text: '',
+                              sender: 'user',
+                              timestamp: Date.now(),
+                              fileName: file.name,
+                              fileType: file.type,
+                              fileUrl: url,
+                              isImage: false
+                            };
+                            setActiveChat(prev => {
+                              if (!prev) return prev;
+                              const updatedMessages = [...prev.messages, fileMessage];
+                              return { ...prev, messages: updatedMessages };
+                            });
+                          };
+                          reader.readAsArrayBuffer(file);
+                        }
+                      });
+                      // 清空 input 以便连续上传同一文件
+                      e.target.value = '';
+                    }}
+                  />
+                  <button
+                    className="send-button"
+                    onClick={handleSendMessage}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? '...' : 'Send'}
+                  </button>
+                  <button
+                    className="send-button"
+                    style={{ marginLeft: 8 }}
+                    onClick={() => document.getElementById('file-upload').click()}
+                    title="上传文件或图片"
+                  >
+                    📎
                   </button>
                 </div>
               </>
+            ) : (
+              <div className="new-chat-prompt">
+                <h3>Welcome to AI Chat Assistant</h3>
+                <p>Click "New Chat" to start a conversation</p>
+              </div>
             )}
           </div>
+
+          {!isMaximized && (
+            <div
+              className="resize-handle"
+              onMouseDown={handleResizeStart}
+            ></div>
+          )}
+
+          {/* 放大图片遮罩层 */}
+          {enlargedImage && (
+            <div
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                background: 'rgba(0,0,0,0.7)',
+                zIndex: 2000,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              onClick={() => setEnlargedImage(null)}
+            >
+              <img
+                src={enlargedImage.url}
+                alt={enlargedImage.name}
+                style={{
+                  maxWidth: '90vw',
+                  maxHeight: '90vh',
+                  borderRadius: 8,
+                  boxShadow: '0 4px 24px rgba(0,0,0,0.5)',
+                  background: '#fff',
+                }}
+                onClick={e => e.stopPropagation()}
+              />
+              <button
+                style={{
+                  position: 'fixed',
+                  top: 32,
+                  right: 48,
+                  fontSize: 32,
+                  color: '#fff',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  zIndex: 2100,
+                }}
+                onClick={() => setEnlargedImage(null)}
+                title="关闭"
+              >×</button>
+            </div>
+          )}
         </div>
       );
     };
@@ -701,4 +1416,5 @@
     ReactDOM.render(<FloatingChatApp />, document.getElementById('chat-root'));
   </script>
 </body>
+
 </html>
